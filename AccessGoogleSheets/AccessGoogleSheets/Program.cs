@@ -1,15 +1,7 @@
-﻿using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using Google.Apis.Sheets.v4;
-using Google.Apis.Sheets.v4.Data;
-using Google.Apis.Util.Store;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace AccessGoogleSheets
@@ -22,78 +14,70 @@ namespace AccessGoogleSheets
         [STAThread]
         static void Main()
         {
-            InitGoogleApi();
+            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(ResolveAssembly);
+            ApplicationStart();
 
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            //Application.EnableVisualStyles();
+            //Application.SetCompatibleTextRenderingDefault(false);
+            //Application.Run(new Form1());
         }
 
-        private static void InitGoogleApi()
+        private static void ApplicationStart()
         {
-            UserCredential credential;
-
-            using (var stream = new FileStream("..\\..\\credentials.json", FileMode.Open, FileAccess.Read))
+            try
             {
-                //string credentialsPath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal);
-                //credentialsPath = Path.Combine(credentialsPath, ".credentials/sheets.googleapis.com-dotnet-quickstart.json");
-
-                //credential = GoogleWebAuthorizationBroker.AuthorizeAsync(GoogleClientSecrets.Load(stream).Secrets,
-                //    Scopes,
-                //    "user",
-                //    CancellationToken.None,
-                //    new FileDataStore(credentialsPath, true)).Result;
-
-                string credPath = "token.json";
-                credential = GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    GoogleClientSecrets.Load(stream).Secrets,
-                    _scopes,
-                    "user",
-                    CancellationToken.None,
-                    new FileDataStore(credPath, true)).Result;
-                Console.WriteLine("Credential file saved to: " + credPath);
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new Form1());
             }
-
-            _sheetsService = new SheetsService(new BaseClientService.Initializer()
+            catch (Exception ex)
             {
-                HttpClientInitializer = credential,
-                ApplicationName = _applicationName,
-            });
-
-            
-            // 구글 스프레드 시트에서 읽기
-            string readRange = "Sheet1!A1:E5";
-            SpreadsheetsResource.ValuesResource.GetRequest readRequest = _sheetsService.Spreadsheets.Values.Get(_spreadSheetsId, readRange);
-            ValueRange readResponse = readRequest.Execute();
-            IList<IList<object>> values = readResponse.Values;
-            foreach(var rows in values )
-            {
-                Console.WriteLine();
-                foreach (var cols in rows)
-                {
-                    Console.Write(cols + " ");
-                }
-                Console.WriteLine();
+                MessageBox.Show(ex.Message);
             }
-
-            // 구글 스프레드 시트에 쓰기
-            string appendRange = "";
-            Google.Apis.Sheets.v4.Data.ValueRange requestBody = new Google.Apis.Sheets.v4.Data.ValueRange();
-            SpreadsheetsResource.ValuesResource.AppendRequest appendRequest = _sheetsService.Spreadsheets.Values.Append(requestBody, _spreadSheetsId, appendRange);
-
-            SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum valueInputOption = (SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum)0;  // TODO: Update placeholder value.
-            SpreadsheetsResource.ValuesResource.AppendRequest.InsertDataOptionEnum insertDataOption = (SpreadsheetsResource.ValuesResource.AppendRequest.InsertDataOptionEnum)0;  // TODO: Update placeholder value.
-            appendRequest.ValueInputOption = valueInputOption;
-            appendRequest.InsertDataOption = insertDataOption;
-
-            Google.Apis.Sheets.v4.Data.AppendValuesResponse appendResponse = appendRequest.Execute();
-
-            Console.WriteLine(JsonConvert.SerializeObject(appendResponse));
         }
+        private static Assembly ResolveAssembly(object sender, ResolveEventArgs args)
+        {
+            //Assembly thisAssembly = Assembly.GetExecutingAssembly();
+            //var name = args.Name.Substring(0, args.Name.IndexOf(',')) + ".dll";
+            //foreach (var r in thisAssembly.GetManifestResourceNames())
+            //{
+            //    if (r.EndsWith(name))
+            //    {
+            //        using (Stream stream = thisAssembly.GetManifestResourceStream(r))
+            //        {
+            //            if (stream != null)
+            //            {
+            //                byte[] assembly = new byte[stream.Length];
+            //                stream.Read(assembly, 0, assembly.Length);
+            //                Console.WriteLine("Dll file load : " + r);
+            //                return Assembly.Load(assembly);
+            //            }
+            //        }
+            //    }
+            //}
+            //return null;
 
-        private static readonly string[] _scopes = { SheetsService.Scope.Spreadsheets };
-        private static readonly string _applicationName = "SMS Report";
-        private static readonly string _spreadSheetsId = "1gNQ0bs0xktkD_54_OCC8QuNRjIASIt05ZE08PgOLO2c";
-        static SheetsService _sheetsService;
+            //Lamda
+            Assembly thisAssembly = Assembly.GetExecutingAssembly();
+            var name = args.Name.Substring(0, args.Name.IndexOf(',')) + ".dll";
+            var resources = thisAssembly.GetManifestResourceNames().Where(s => s.EndsWith(name));
+
+            if (resources.Count() > 0)
+            {
+                string resourceName = resources.First();
+                using (Stream stream = thisAssembly.GetManifestResourceStream(resourceName))
+                {
+                    if (stream != null)
+                    {
+                        byte[] assembly = new byte[stream.Length];
+                        stream.Read(assembly, 0, assembly.Length);
+                        Console.WriteLine("Dll file load : " + resourceName);
+                        return Assembly.Load(assembly);
+                    }
+                }
+            }
+            return null;
+
+        }
     }
 }
