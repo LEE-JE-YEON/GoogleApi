@@ -1,2 +1,2 @@
 ### GoogleSpreadSheets Api
-* access google spreadsheets with C#
+* access and read/write google spreadsheets with C#
